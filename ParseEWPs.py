@@ -1,12 +1,12 @@
 # import xml.etree.ElementTree as Et
 from lxml import etree as Et
 import os
+import argparse
 import sys
 
 __author__ = 'MWadswo'
 # User cases
 # Modify option in specified configurations for one or many .ewp's
-import argparse
 # python MegaProjParser.py
 # User gives string to search for xml tag text
 # 1. Modify that value
@@ -27,49 +27,29 @@ import argparse
 # Iter and in keyword will return the element So I might be able to calculate it's path?
 # Can i get the path between a root and element?
 
-
-parser = argparse.ArgumentParser(
-    description='Example with nonoptional arguments',
-)
-
-parser.add_argument('count', action="store", type=int)
-parser.add_argument('units', action="store")
-
-print(parser.parse_args())
-
-# Pulled from stackoverflow. Print absolute path of entire tree
-def print_abs_path(root, path=None):
-    if path is None:
-        path = [root.tag]
-
-    for child in root:
-        if child.text is not None:
-            text = child.text.strip()
-        else:
-            text = 'None'
-
-        new_path = path[:]
-        new_path.append(child.tag)
-        if text:
-            print '/{0}, {1}'.format('/'.join(new_path), text)
-        print_abs_path(child, new_path)
+#######################################
+# Function Defs
+#######################################
 
 
 # Find all setting by text value
-def findelementbytext(text):
-    foundelements = []
+def find_elem_by_text(text):
+    found_elements = []
     for elem in root.iter():
         if elem.text == text:
-            foundelements .append(elem)
-    return foundelements
+            found_elements.append(elem)
+    return found_elements
+
 
 # Returns the text of the configuration tag an element is under, or None if N/A
-def getelementsconfiguration(elem):
+def get_element_configuration(elem):
+    # Check for bad param
     if elem is None:
         return None
 
     walk_up_elem = elem
 
+    # Walk up tree, saving element until configuration is found
     while walk_up_elem.tag != None and walk_up_elem.tag != 'configuration':
         walk_up_elem = walk_up_elem.getparent()
 
@@ -81,35 +61,56 @@ def makelementstoconfigdict(elem):
     # for elem in listelemets:
     #     elemtoconfigdict[elem] = elem
 
+
+# Scan for project files. Return list.
+def find_ewp_files(dir_path):
+    ewp_list = []
+    for dirpath, dirnames, filenames in os.walk(dir_path, followlinks=True):
+        for filename in [f for f in filenames if f.endswith(".ewp")]:
+            # print os.path.join(dirpath, filename)
+            # Create a list structure of project files
+            ewp_list.append(os.path.join(dirpath, filename))
+
+            # Present a numbered list of found project files to user to confirm for editting
+            # Allow user to remove some found files by entering the relevant number
+            # Allow user to finalize list
+    return ewp_list
+
+
+#######################################
+# Script logic
+#######################################
+# Add arguments
+# Add optional number of arguments(?) to pull in variable number of dirs/files
+# If arguments include directory(ies)
+# Pull directory from parameter to scan for project files
+parser = argparse.ArgumentParser(
+    description='Parse EWP (PEWP) is a script used to change project settings in multiple IAR .ewp files'
+                'simultaneously.',
+)
+
+parser.add_argument('proj_root_dir', action="store", help="Upper directory containing all project files"
+                                                          "you wish to modify.")
+parser.add_argument('option_name', action="store", help="Option to modify.")
+parse_options = parser.parse_args()
+print(parser.parse_args())
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-# Add arguments
-    # Add optional number of arguments(?) to pull in variable number of dirs/files
-# If arguments include directory(ies)
-    # Pull directory from parameter to scan for project files
+ewp_list = find_ewp_files(parse_options.proj_root_dir)  # Parse XML files into element tree
 
-# Scan for project files
-ewp_list = []
-for dirpath, dirnames, filenames in os.walk("."):
-    for filename in [f for f in filenames if f.endswith(".ewp")]:
-        # print os.path.join(dirpath, filename)
-        # Create a list structure of project files
-        ewp_list.append(os.path.join(dirpath, filename))
+if not ewp_list:
+    sys.exit("Didn't find any .ewp files.")
 
-# Present a numbered list of found project files to user to confirm for editting
-    # Allow user to remove some found files by entering the relevant number
-    # Allow user to finalize list
-
-# Parse XML files into element tree
-ewp_ = os.path.join(dir_path + '\\S3_Test.ewp')
-tree = Et.parse(ewp_)
+ewp_file = ewp_list[0]
+tree = Et.parse(ewp_file)
 root = tree.getroot()
-
 
 # Find specified option under specific configuration branches(tag?)
 selected_config = ['Release', 'Debug']
 selected_option = 'CCCompilerRuntimeInfo'
 selected_value = 'TEST'
+
 
 # Count number of state siblings of given elem
 def count_option_state(elem):
@@ -119,7 +120,7 @@ def count_option_state(elem):
 # Find option, if specified config, modify
 for elem in tree.iter():
     if elem.text == selected_option:
-        if getelementsconfiguration(elem) in selected_config:
+        if get_element_configuration(elem) in selected_config:
             elem.getnext().text = selected_value
 
 tree.write(os.path.join(dir_path, 'testout.ewp'))
