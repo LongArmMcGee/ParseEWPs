@@ -64,8 +64,16 @@ def makelementstoconfigdict(elem):
 
 # Scan for project files. Return list.
 def find_ewp_files(dir_path):
+    # todo allow dir_path to be a file path
     ewp_list = []
-    for dirpath, dirnames, filenames in os.walk(dir_path, followlinks=True):
+
+    # If not a complete path, try joining with current working directory
+    if not os.path.isdir(dir_path):
+        dir_path = os.path.join(os.getcwd(), dir_path)
+        if not os.path.isdir(dir_path):
+            sys.exit("Provided folder is found.")
+
+    for dirpath, dirnames, filenames in os.walk(os.path.abspath(dir_path), followlinks=True):
         for filename in [f for f in filenames if f.endswith(".ewp")]:
             # print os.path.join(dirpath, filename)
             # Create a list structure of project files
@@ -86,41 +94,35 @@ def find_ewp_files(dir_path):
 # Pull directory from parameter to scan for project files
 parser = argparse.ArgumentParser(
     description='Parse EWP (PEWP) is a script used to change project settings in multiple IAR .ewp files'
-                'simultaneously.',
+                ' simultaneously. Example command line call: python ParseEWPs.py "\TestEwps" "CCCompilerRuntimeInfo" Debug Release',
 )
 
 parser.add_argument('proj_root_dir', action="store", help="Upper directory containing all project files"
                                                           "you wish to modify.")
 parser.add_argument('option_name', action="store", help="Option to modify.")
+parser.add_argument('configs_to_update', nargs='+', help="List of project configurations to update")
 parse_options = parser.parse_args()
 print(parser.parse_args())
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-
 ewp_list = find_ewp_files(parse_options.proj_root_dir)  # Parse XML files into element tree
+
+# Find specified option under specific configuration branches(tag?)
+selected_config = parse_options.configs_to_update
+selected_option = parse_options.option_name
+#
+selected_value = 'TEST'
 
 if not ewp_list:
     sys.exit("Didn't find any .ewp files.")
 
-ewp_file = ewp_list[0]
-tree = Et.parse(ewp_file)
-root = tree.getroot()
+for ewp_file in ewp_list:
+    tree = Et.parse(ewp_file)
+    root = tree.getroot()
 
-# Find specified option under specific configuration branches(tag?)
-selected_config = ['Release', 'Debug']
-selected_option = 'CCCompilerRuntimeInfo'
-selected_value = 'TEST'
+    # Find option, if specified config, modify
+    for elem in tree.iter():
+        if elem.text == selected_option:
+            if get_element_configuration(elem) in selected_config:
+                elem.getnext().text = selected_value
 
-
-# Count number of state siblings of given elem
-def count_option_state(elem):
-    return len(elem.getparent().findall('state'))
-
-
-# Find option, if specified config, modify
-for elem in tree.iter():
-    if elem.text == selected_option:
-        if get_element_configuration(elem) in selected_config:
-            elem.getnext().text = selected_value
-
-tree.write(os.path.join(dir_path, 'testout.ewp'))
+    tree.write(os.path.join(os.path.dirname('test' + ewp_file))

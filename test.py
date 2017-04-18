@@ -120,3 +120,6 @@ print root[0].getparent().getparent() # Returns None
 # for elem in tree.findall(".//configuration"):
 #     print elem.find('name').text
 
+# Count number of state siblings of given elem
+def count_option_state(elem):
+    return len(elem.getparent().findall('state'))
