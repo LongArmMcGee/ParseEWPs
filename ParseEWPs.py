@@ -115,8 +115,8 @@ selected_value = 'TEST'
 if not ewp_list:
     sys.exit("Didn't find any .ewp files.")
 
-for ewp_file in ewp_list:
-    tree = Et.parse(ewp_file)
+for file in ewp_list:
+    tree = Et.parse(file)
     root = tree.getroot()
 
     # Find option, if specified config, modify
@@ -125,4 +125,8 @@ for ewp_file in ewp_list:
             if get_element_configuration(elem) in selected_config:
                 elem.getnext().text = selected_value
 
-    tree.write(os.path.join(os.path.dirname('test' + ewp_file))
+    # Add test to file output name
+    path, file_name = os.path.split(file)
+    file_name = 'test' + file_name
+
+    tree.write(os.path.join(path, file_name), encoding="iso-8859-1", xml_declaration=True)
