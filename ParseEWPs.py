@@ -56,6 +56,28 @@ def get_element_configuration(elem):
     return walk_up_elem[0].text
 
 
+def count_siblings(elem):
+    i = 0
+    for sibling in elem.itersiblings():
+        i += 1
+    return i
+
+# Handling if a selected options has multiple states like CCIncludePath2
+def multi_state_options(elem):
+    print "multiple sibling handlings"
+
+    i = 0
+    for sibling in elem.itersiblings():
+        print i, ": " + Et.tostring(sibling)
+        i += 1
+
+    # Print user selected element from sibling list
+    sibling_list = list(elem.itersiblings())
+    print Et.tostring(sibling_list[int(raw_input("Select element to modify: "))])
+
+    # Select modify action (insert before, insert after, (or insert id?) delete, modify)
+
+
 def makelementstoconfigdict(elem):
     elemtoconfigdict = {}
     # for elem in listelemets:
@@ -123,10 +145,16 @@ for file in ewp_list:
     for elem in tree.iter():
         if elem.text == selected_option:
             if get_element_configuration(elem) in selected_config:
-                elem.getnext().text = selected_value
+                if count_siblings(elem) == 1:
+                    elem.getnext().text = selected_value
+                else:
+                    print 'Not a single state option. Don\'t know how to merge those' \
+                          'across multiple files.'
+                    break
 
     # Add test to file output name
     path, file_name = os.path.split(file)
     file_name = 'test' + file_name
 
+    # todo overwrite file instead of seperate test file.
     tree.write(os.path.join(path, file_name), encoding="iso-8859-1", xml_declaration=True)
