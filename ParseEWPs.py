@@ -128,6 +128,22 @@ print(parser.parse_args())
 
 ewp_list = find_ewp_files(parse_options.proj_root_dir)  # Parse XML files into element tree
 
+index = 0
+for files in ewp_list:
+    print str(index) + ": " + ewp_list[index]
+    index += 1
+
+remove_files = True
+while (remove_files):
+    file_select = raw_input("Select the number of any files to exclude. Enter an empty line to continue")
+    if file_select is '':
+        remove_files = False
+    else:
+        try:
+            print ewp_list.pop(int(file_select))
+        except IndexError:
+            print 'Invalid index'
+
 # Find specified option under specific configuration branches(tag?)
 selected_config = parse_options.configs_to_update
 selected_option = parse_options.option_name
@@ -151,6 +167,8 @@ for file in ewp_list:
                     print 'Not a single state option. Don\'t know how to merge those' \
                           'across multiple files.'
                     break
+
+    # ToDo add check for writable file, and perform cc checkout
 
     # Add test to file output name
     path, file_name = os.path.split(file)
