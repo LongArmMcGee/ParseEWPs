@@ -3,6 +3,7 @@ from lxml import etree as Et
 import os
 import argparse
 import sys
+from subprocess import call
 
 __author__ = 'MWadswo'
 # User cases
@@ -122,6 +123,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('proj_root_dir', action="store", help="Upper directory containing all project files"
                                                           "you wish to modify.")
 parser.add_argument('option_name', action="store", help="Option to modify.")
+parser.add_argument('new_value', action="store", help="New option value.")
 parser.add_argument('configs_to_update', nargs='+', help="List of project configurations to update")
 parse_options = parser.parse_args()
 print(parser.parse_args())
@@ -144,15 +146,15 @@ while (remove_files):
         except IndexError:
             print 'Invalid index'
 
-# Find specified option under specific configuration branches(tag?)
+# Find specified option under specific configuration tag
 selected_config = parse_options.configs_to_update
 selected_option = parse_options.option_name
-#
-selected_value = 'TEST'
+new_value = parse_options.option_name
 
 if not ewp_list:
     sys.exit("Didn't find any .ewp files.")
 
+# Check for multi state options
 for file in ewp_list:
     tree = Et.parse(file)
     root = tree.getroot()
@@ -161,18 +163,23 @@ for file in ewp_list:
     for elem in tree.iter():
         if elem.text == selected_option:
             if get_element_configuration(elem) in selected_config:
-                if count_siblings(elem) == 1:
-                    elem.getnext().text = selected_value
                 else:
                     print 'Not a single state option. Don\'t know how to merge those' \
                           'across multiple files.'
                     break
 
-    # ToDo add check for writable file, and perform cc checkout
+# Check out all .ewps
+ewp_list_string = ""
+for ewp in ewp_list:
+    ewp_list_string = ewp_list_string + " " + ewp + ""
 
-    # Add test to file output name
-    path, file_name = os.path.split(file)
-    file_name = 'test' + file_name
+print "ewp_list_string: /n" + ewp_list_string
 
-    # todo overwrite file instead of seperate test file.
-    tree.write(os.path.join(path, file_name), encoding="iso-8859-1", xml_declaration=True)
+return_code = call("cleartool checkout" + ewp_list_string, shell=True)
+print "cleartool return code: " + str(return_code)
+
+# todo overwrite file instead of seperate test file.
+try:
+    tree.write(os.path.join(file), encoding="iso-8859-1", xml_declaration=True)
+except e:
+     raise e
